@@ -1,6 +1,6 @@
 //takes a funtion as parameter  (higher order funtion)
 const asyncHandler = (requestHandler)=>{
-   async  (req,res,next)=>{
+  return async  (req,res,next)=>{
     try {
         await requestHandler(req,res,next)
     } catch (error) {
@@ -15,7 +15,7 @@ const asyncHandler = (requestHandler)=>{
 }
 // recives a funtion and returns a promise
 const asyncHandlerPromise = (requestHandler) => {
-    (req,res,next) =>{
+   return (req,res,next) =>{
         Promise.resolve(requestHandler(req,res,next)).catch((err)=> next(err))
     
     }
