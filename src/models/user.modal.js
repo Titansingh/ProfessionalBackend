@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import  jwt  from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import { ACCESS_TOKEN_SECRET,ACCESS_TOKEN_EXPIRY,REFRESH_TOKEN_EXPIRY,REFRESH_TOKEN_SECRET} from "../constants";
+import { ACCESS_TOKEN_SECRET,ACCESS_TOKEN_EXPIRY,REFRESH_TOKEN_EXPIRY,REFRESH_TOKEN_SECRET} from "../constants.js";
 
 const userSchema = new mongoose.Schema({
     watchHistory:[{
