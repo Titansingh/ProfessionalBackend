@@ -2,19 +2,10 @@ import { asyncHandler,asyncHandlerPromise } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.modal.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 const registerUser = asyncHandlerPromise(async (req,res)=>{
-   //get user details from front end
-   //validation -not empty
-   //check if user already exists: username or email
-   //check for images, check for avatar
-   //upload them to cloudinary, avatar
-   //create user object - create entry in db
-   //remove password and refresh tome from response
-   //check for user creation 
-   //return response
    const reqBody = req.body
+ 
 
    console.log("Register User Api Is Hit",reqBody)
 
@@ -32,8 +23,8 @@ const registerUser = asyncHandlerPromise(async (req,res)=>{
      }
 
    const { username, email, password, fullName} = reqBody
-   //const avatarLocalPath = req?.files?.avatar[0]?.path
-   //const coverImageLocalPath = req?.files?.coverImage[0]?.path
+   const avatarLocalPath = req?.files?.avatar?.[0]?.path //v.imp
+   const coverImageLocalPath = req?.files?.coverImage?.[0]?.path//v.imp
    let avatarUrl = ''
    let coverImageUrl = ''
 
@@ -49,17 +40,17 @@ const registerUser = asyncHandlerPromise(async (req,res)=>{
     }
    
 
-   //  // Upload avatar to Cloudinary if it exists
-   //  if (avatarLocalPath) {
-   //      const avatarUpload = await uploadOnCloudinary(avatarLocalPath);
-   //      avatarUrl = avatarUpload.url;
-   //  }
+    // Upload avatar to Cloudinary if it exists
+    if (avatarLocalPath) {
+        const avatarUpload = await uploadOnCloudinary(avatarLocalPath);
+        avatarUrl = avatarUpload.url;
+    }
 
-   //  // Upload cover image to Cloudinary if it exists
-   //  if (coverImageLocalPath) {
-   //      const coverImageUpload = await uploadOnCloudinary(coverImageLocalPath);
-   //      coverImageUrl = coverImageUpload.url;
-   //  }
+    // Upload cover image to Cloudinary if it exists
+    if (coverImageLocalPath) {
+        const coverImageUpload = await uploadOnCloudinary(coverImageLocalPath);
+        coverImageUrl = coverImageUpload.url;
+    }
 
   
 
