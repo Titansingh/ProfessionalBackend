@@ -3,11 +3,29 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.modal.js";
 
-const registerUser = asyncHandlerPromise(async (req,res)=>{
-   const reqBody = req.body
- 
+const generateAccessAndRefreshToken = async(userId)=>{
+  try {
+      const user = await User.findById(userId)
+      const accessToken = user.generateAccessToken()
+      const refreshToken = user.generateRefreshToken()
 
-   console.log("Register User Api Is Hit",reqBody)
+      user.refreshToken = refreshToken
+      user.accessToken = accessToken
+      await user.save({ validateBeforeSave: false})
+
+      return {accessToken, refreshToken}
+
+
+  } catch (error) {
+    throw new ApiError(500,"Something went wrong while generating acess and refresh token")
+    
+  }
+}
+
+const registerUser = asyncHandlerPromise(async (req,res)=>{
+  console.log("Register User Api Is Hit",reqBody)
+
+  const reqBody = req.body
 
    if(!reqBody?.fullName?.trim()){                                                       //validation
     throw new ApiError(400, "fullName is required")
@@ -77,4 +95,56 @@ const registerUser = asyncHandlerPromise(async (req,res)=>{
     )
 })
 
-export {registerUser}
+//extract credential from api call
+// check if user exists
+//check if password is correct
+// return access and refresh token
+
+const loginUser = asyncHandlerPromise(async ( req, res)=>{
+  console.log("Login User Api Is Hit",reqBody)
+
+  const {username,email,password} = req.body;
+
+   if(!username.trim() || !email.trim()){                                                       //validation
+    throw new ApiError(400, "username or email is required")
+   }
+
+  const user = await User.findOne({
+    $or:[{username},{email}]
+   })
+
+   if(!user) {
+    throw new ApiError(404, "User does not exist")
+   } else {
+
+   }
+
+
+  const isPasswordValid = await user.isPasswordCorrect( password)
+
+  if(!isPasswordValid) {
+    throw new ApiError(401,"Invalid user Credentials")
+  }
+
+  const{accessToken,refreshToken} = await generateAccessAndRefreshToken(user._id)
+  
+  const options = {
+    httpOnly: true,
+    secure: true
+  }
+
+  return res
+          .status(200)
+          .cookie("accessToken",accessToken,options)
+          .cookie("refreshToken",refreshToken,options)
+          .json(
+            new ApiResponse(200,{
+               user,accessToken,refreshToken
+            })
+          )
+
+})
+
+
+
+export {registerUser, loginUser}
