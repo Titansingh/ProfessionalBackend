@@ -228,7 +228,7 @@ const getCurrentUser = asyncHandlerPromise(async (req, res) => {
 });
 
 const updatedUserDetails = asyncHandlerPromise(async (req, res) => {
-  const { fullName, username } = req.body;  //might need validation
+  const { fullName, username } = req.body; //might need validation
   let newUser = {};
   if (fullName) {
     newUser.fullName = fullName;
@@ -248,6 +248,31 @@ const updatedUserDetails = asyncHandlerPromise(async (req, res) => {
   ).select("-password");
   return res(200, user, "User updated successfully");
 });
+
+const updateUserAvatar = asyncHandlerPromise(async (req, res) => {
+  //refocus
+  const newAvatarLocalPath = req.files?.path;
+  if (!newAvatarLocalPath) {
+    throw new ApiError(400, "New Avatar file is missing");
+  }
+  const newAvatar = await uploadOnCloudinary(newAvatarLocalPath);
+
+  if (!newAvatar?.url) {
+    throw new ApiError(400, "Error while uploading avatar to cloudinary");
+  }
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        avatar: newAvatar.url,
+      },
+    },
+    {
+      new: true, //return updated user
+    }
+  ).select("-password");
+  return res.status(200, user.avatar, "User Avatar is updated");
+});
 export {
   registerUser,
   loginUser,
@@ -256,4 +281,5 @@ export {
   changePassword,
   getCurrentUser,
   updatedUserDetails,
+  updateUserAvatar,
 };
