@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.modal.js";
 import Jwt from "jsonwebtoken.js";
+import { json } from "express";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -197,4 +198,62 @@ const refreshAccessToken = asyncHandlerPromise(async (req, res) => {
     );
 });
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+const changePassword = asyncHandlerPromise(async (req, res) => {
+  const oldPassword = req.body?.oldPassword?.trim();
+  const newPassword = req.body?.newPassword?.trim();
+  if (!(oldPassword || newPassword)) {
+    throw new ApiError(400, "old and new password is required");
+  }
+
+  const user = await User.findById(req?.user?._id);
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+
+  if (!isPasswordCorrect) {
+    throw new ApiError(400, "Invalid old password");
+  }
+
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
+
+  return (
+    res.status(200),
+    json(new ApiResponse(200, {}, "password changed successfully"))
+  );
+});
+
+const getCurrentUser = asyncHandlerPromise(async (req, res) => {
+  return res
+    .status(200)
+    .json(200, req.user, "current user fetched successfully");
+});
+
+const updatedUserDetails = asyncHandlerPromise(async (req, res) => {
+  const { fullName, username } = req.body;  //might need validation
+  let newUser = {};
+  if (fullName) {
+    newUser.fullName = fullName;
+  }
+  if (username) {
+    newUser.username = username;
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: newUser,
+    },
+    {
+      new: true, //return updated user
+    }
+  ).select("-password");
+  return res(200, user, "User updated successfully");
+});
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  changePassword,
+  getCurrentUser,
+  updatedUserDetails,
+};
