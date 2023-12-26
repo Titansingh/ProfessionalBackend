@@ -1,10 +1,13 @@
+// Generate access and refresh tokens for a user. This is the main entry point for OAuth2. The asyncHandler and asyncPromise are used to communicate with the server
+
 import { asyncHandler, asyncHandlerPromise } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.modal.js";
-import Jwt from "jsonwebtoken.js";
+import Jwt from "jsonwebtoken";
 import { json } from "express";
 
+// Function to generate access and refresh tokens for a user
 const generateAccessAndRefreshToken = async (userId) => {
   try {
     const user = await User.findById(userId);
@@ -19,36 +22,36 @@ const generateAccessAndRefreshToken = async (userId) => {
   } catch (error) {
     throw new ApiError(
       500,
-      "Something went wrong while generating acess and refresh token"
+      "Something went wrong while generating access and refresh token"
     );
   }
 };
 
+// Function to register a new user
 const registerUser = asyncHandlerPromise(async (req, res) => {
+  const reqBody = req.body;
   console.log("Register User Api Is Hit", reqBody);
 
-  const reqBody = req.body;
-
   if (!reqBody?.fullName?.trim()) {
-    //validation
+    // Validation: Check if fullName is provided
     throw new ApiError(400, "fullName is required");
   }
   if (!reqBody?.email?.trim()) {
-    //validation
+    // Validation: Check if email is provided
     throw new ApiError(400, "email is required");
   }
   if (!reqBody?.username?.trim()) {
-    //validation
+    // Validation: Check if username is provided
     throw new ApiError(400, "username is required");
   }
   if (!reqBody?.password?.trim()) {
-    //validation
+    // Validation: Check if password is provided
     throw new ApiError(400, "password is required");
   }
 
   const { username, email, password, fullName } = reqBody;
-  const avatarLocalPath = req?.files?.avatar?.[0]?.path; //v.imp
-  const coverImageLocalPath = req?.files?.coverImage?.[0]?.path; //v.imp
+  const avatarLocalPath = req?.files?.avatar?.[0]?.path; // Very important
+  const coverImageLocalPath = req?.files?.coverImage?.[0]?.path; // Very important
   let avatarUrl = "";
   let coverImageUrl = "";
 
@@ -57,9 +60,9 @@ const registerUser = asyncHandlerPromise(async (req, res) => {
   });
 
   if (existedUser) {
-    throw new ApiError(409, "User with email or username already exist");
+    throw new ApiError(409, "User with email or username already exists");
   } else {
-    console.log("user does not exist in db");
+    console.log("User does not exist in the database");
   }
 
   // Upload avatar to Cloudinary if it exists
@@ -84,27 +87,28 @@ const registerUser = asyncHandlerPromise(async (req, res) => {
   });
 
   const createdUser = await User.findById(user._id).select(
-    //calling db if user is created and selecting and removing not required fields
+    // Calling the database to check if the user is created and selecting and removing unnecessary fields
     "-password -refreshToken"
   );
   if (!createdUser) {
     throw new ApiError(500, "Something went wrong while registering the user");
   } else {
-    console.log("user created");
+    console.log("User created");
   }
 
   return res
     .status(201)
-    .json(new ApiResponse(200, createdUser, "user registered sucessfull"));
+    .json(new ApiResponse(200, createdUser, "User registered successfully"));
 });
 
+// Function to login a user
 const loginUser = asyncHandlerPromise(async (req, res) => {
-  console.log("Login User Api Is Hit", reqBody);
+  const reqBody = req.body;
+  const { username, email, password } = reqBody;
+  console.log("Login User Api Is Hit", req.body);
 
-  const { username, email, password } = req.body;
-
-  if (!(username.trim() || email.trim())) {
-    //validation
+  if (!(username?.trim() || email?.trim())) {
+    // Validation: Check if either username or email is provided
     throw new ApiError(400, "username or email is required");
   }
 
@@ -120,7 +124,7 @@ const loginUser = asyncHandlerPromise(async (req, res) => {
   const isPasswordValid = await user.isPasswordCorrect(password);
 
   if (!isPasswordValid) {
-    throw new ApiError(401, "Invalid user Credentials");
+    throw new ApiError(401, "Invalid user credentials");
   }
 
   const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
@@ -138,13 +142,14 @@ const loginUser = asyncHandlerPromise(async (req, res) => {
     .cookie("refreshToken", refreshToken, options)
     .json(
       new ApiResponse(200, {
-        user, //old user not updated with acess and refresh token
+        user, // Old user not updated with access and refresh token
         accessToken,
         refreshToken,
       })
     );
 });
 
+// Function to logout a user
 const logoutUser = asyncHandlerPromise(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
@@ -164,9 +169,10 @@ const logoutUser = asyncHandlerPromise(async (req, res) => {
     .status(200)
     .cookie("accessToken", accessToken, options)
     .cookie("refreshToken", refreshToken, options)
-    .json(new ApiResponse(200, {}, "User logedout"));
+    .json(new ApiResponse(200, {}, "User logged out"));
 });
 
+// Function to refresh the access token
 const refreshAccessToken = asyncHandlerPromise(async (req, res) => {
   const incomingRefreshToken =
     req.cookies.refreshToken || req.body.refreshToken;
@@ -180,11 +186,11 @@ const refreshAccessToken = asyncHandlerPromise(async (req, res) => {
 
   const user = await User.findById(decodedIncomingRefreshToken._id);
   if (user) {
-    throw ApiError(401, "Invalid refresh Token");
+    throw ApiError(401, "Invalid refresh token");
   }
   if (incomingRefreshToken !== user?.refreshToken) {
-    //check weather the refresh token is not expired or used
-    throw ApiError(401, "refresh Token expired or used");
+    // Check whether the refresh token is not expired or used
+    throw ApiError(401, "Refresh token expired or used");
   }
   const newRefreshToken = await user.generateAccessToken();
   return res
@@ -198,11 +204,12 @@ const refreshAccessToken = asyncHandlerPromise(async (req, res) => {
     );
 });
 
+// Function to change the user's password
 const changePassword = asyncHandlerPromise(async (req, res) => {
   const oldPassword = req.body?.oldPassword?.trim();
   const newPassword = req.body?.newPassword?.trim();
   if (!(oldPassword || newPassword)) {
-    throw new ApiError(400, "old and new password is required");
+    throw new ApiError(400, "Old and new password are required");
   }
 
   const user = await User.findById(req?.user?._id);
@@ -217,18 +224,20 @@ const changePassword = asyncHandlerPromise(async (req, res) => {
 
   return (
     res.status(200),
-    json(new ApiResponse(200, {}, "password changed successfully"))
+    json(new ApiResponse(200, {}, "Password changed successfully"))
   );
 });
 
+// Function to get the current user
 const getCurrentUser = asyncHandlerPromise(async (req, res) => {
   return res
     .status(200)
-    .json(200, req.user, "current user fetched successfully");
+    .json(200, req.user, "Current user fetched successfully");
 });
 
+// Function to update user details
 const updatedUserDetails = asyncHandlerPromise(async (req, res) => {
-  const { fullName, username } = req.body; //might need validation
+  const { fullName, username } = req.body; // Might need validation
   let newUser = {};
   if (fullName) {
     newUser.fullName = fullName;
@@ -243,14 +252,15 @@ const updatedUserDetails = asyncHandlerPromise(async (req, res) => {
       $set: newUser,
     },
     {
-      new: true, //return updated user
+      new: true, // Return updated user
     }
   ).select("-password");
   return res(200, user, "User updated successfully");
 });
 
+// Function to update user avatar
 const updateUserAvatar = asyncHandlerPromise(async (req, res) => {
-  //refocus
+  // Refocus
   const newAvatarLocalPath = req.files?.path;
   if (!newAvatarLocalPath) {
     throw new ApiError(400, "New Avatar file is missing");
@@ -258,7 +268,7 @@ const updateUserAvatar = asyncHandlerPromise(async (req, res) => {
   const newAvatar = await uploadOnCloudinary(newAvatarLocalPath);
 
   if (!newAvatar?.url) {
-    throw new ApiError(400, "Error while uploading avatar to cloudinary");
+    throw new ApiError(400, "Error while uploading avatar to Cloudinary");
   }
   const user = await User.findByIdAndUpdate(
     req.user?._id,
@@ -268,11 +278,71 @@ const updateUserAvatar = asyncHandlerPromise(async (req, res) => {
       },
     },
     {
-      new: true, //return updated user
+      new: true, // Return updated user
     }
   ).select("-password");
   return res.status(200, user.avatar, "User Avatar is updated");
 });
+
+// Function to get user channel profile
+const getUserChannelProfile = asyncHandlerPromise(async (req, res) => {
+  const { username } = req.body;
+  // Add validation and error handling
+  const channel = await User.aggregate([
+    {
+      $match: {
+        username: username?.toLowerCase(),
+      },
+
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channels",
+        as: "subscribers",
+      },
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "subscribedTo",
+      },
+      $addFields: {
+        subscriberCount: {
+          $size: "$subscribers",
+        },
+        channelsSubscribedToCount: {
+          $size: "$subscribedTo",
+        },
+        isSubscribed: {
+          $cond: {
+            if: { $in: [req.usr?._id, "$subscribers.subscriber"] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+      $project: {
+        fullName: 1,
+        username: 1,
+        subscriberCount: 1,
+        channelsSubscribedToCount: 1,
+        isSubscribed: 1,
+        avatar: 1,
+        coverImage: 1,
+        email: 1,
+      },
+    },
+  ]);
+  if (!channel?.length) {
+    throw new ApiError(404, "Channel does not exist");
+  }
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, channel[0], "User channel fetched successfully")
+    );
+});
+
 export {
   registerUser,
   loginUser,
@@ -282,4 +352,5 @@ export {
   getCurrentUser,
   updatedUserDetails,
   updateUserAvatar,
+  getUserChannelProfile,
 };

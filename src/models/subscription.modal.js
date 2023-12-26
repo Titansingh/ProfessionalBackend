@@ -11,6 +11,9 @@ const subscriptionSchema = mongoose.Schema(
       ref: "User",
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
+
 export const Subscription = mongoose.Model("Subscription", subscriptionSchema);
